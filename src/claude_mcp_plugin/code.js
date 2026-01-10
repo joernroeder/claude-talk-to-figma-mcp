@@ -280,7 +280,22 @@ async function getNodeInfo(nodeId) {
     format: "JSON_REST_V1",
   });
 
-  return response.document;
+  const result = response.document;
+
+  // If it's a component instance, add the mainComponent key
+  if (node.type === "INSTANCE") {
+    try {
+      const mainComponent = await node.getMainComponentAsync();
+      if (mainComponent && mainComponent.key) {
+        result.mainComponentKey = mainComponent.key;
+      }
+    } catch (error) {
+      console.error(`Error getting mainComponent: ${error.message}`);
+      // Continue without the key if we can't get it
+    }
+  }
+
+  return result;
 }
 
 async function getNodesInfo(nodeIds) {
@@ -870,7 +885,7 @@ async function createComponentInstance(params) {
 
       console.log(`Component instance created and added to page successfully`);
 
-      return {
+      const result = {
         id: instance.id,
         name: instance.name,
         x: instance.x,
@@ -879,6 +894,19 @@ async function createComponentInstance(params) {
         height: instance.height,
         componentId: instance.componentId,
       };
+
+      // Include mainComponent key if available (for remote components)
+      try {
+        const mainComponent = await instance.getMainComponentAsync();
+        if (mainComponent && mainComponent.key) {
+          result.componentKey = mainComponent.key;
+        }
+      } catch (error) {
+        console.error(`Error getting mainComponent key: ${error.message}`);
+        // Continue without the key
+      }
+
+      return result;
     } catch (instanceError) {
       console.error(`Error creating component instance: ${instanceError.message}`);
       throw new Error(`Error creating component instance: ${instanceError.message}`);
