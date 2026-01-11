@@ -2796,24 +2796,42 @@ async function setTextStyleId(params) {
         throw new Error(`Node with ID ${nodeId} does not support text styles`);
       }
 
-      // Try to validate the text style exists before applying
-      console.log(`Fetching text styles to validate style ID: ${textStyleId}`);
-      const textStyles = await figma.getLocalTextStylesAsync();
-      const foundStyle = textStyles.find(style => style.id === textStyleId);
+      // Try to find the text style - first locally, then try importing from library
+      console.log(`Looking for text style: ${textStyleId}`);
+      let foundStyle = null;
 
+      // First check local styles
+      const textStyles = await figma.getLocalTextStylesAsync();
+      foundStyle = textStyles.find(style => style.id === textStyleId || style.key === textStyleId);
+
+      // If not found locally, try to import from library using the key
       if (!foundStyle) {
-        throw new Error(`Text style not found with ID: ${textStyleId}. Available styles: ${textStyles.length}`);
+        console.log(`Style not found locally, attempting to import from library...`);
+        try {
+          foundStyle = await figma.importStyleByKeyAsync(textStyleId);
+          console.log(`Successfully imported style from library: ${foundStyle.name}`);
+        } catch (importError) {
+          console.log(`Could not import style: ${importError.message}`);
+          throw new Error(`Text style not found locally or in linked libraries. Key: ${textStyleId}`);
+        }
       }
 
-      console.log(`Text style found, applying to node...`);
+      console.log(`Text style found: ${foundStyle.name}, applying to node...`);
 
-      // Apply the text style to the node
-      node.textStyleId = textStyleId;
+      // Load the font before applying style (required by Figma API)
+      const fontName = node.fontName;
+      if (fontName !== figma.mixed) {
+        await figma.loadFontAsync(fontName);
+      }
+
+      // Apply the text style to the node using async method (required for dynamic-page access)
+      await node.setTextStyleIdAsync(foundStyle.id);
 
       return {
         id: node.id,
         name: node.name,
-        textStyleId: node.textStyleId,
+        textStyleId: foundStyle.id,
+        styleName: foundStyle.name,
         content: node.characters
       };
     })();
