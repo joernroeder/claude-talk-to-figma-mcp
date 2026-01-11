@@ -189,6 +189,8 @@ async function handleCommand(command, params) {
       return await setEffects(params);
     case "set_effect_style_id":
       return await setEffectStyleId(params);
+    case "set_text_style_id":
+      return await setTextStyleId(params);
     case "group_nodes":
       return await groupNodes(params);
     case "ungroup_nodes":
@@ -2752,6 +2754,93 @@ async function setEffectStyleId(params) {
       throw new Error(`The selected node type does not support effect styles. Only certain node types like frames, components, and instances can have effect styles.`);
     } else {
       throw new Error(`Error setting effect style ID: ${error.message}`);
+    }
+  }
+}
+
+// Function to set text style ID
+async function setTextStyleId(params) {
+  const { nodeId, textStyleId } = params || {};
+
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+
+  if (!textStyleId) {
+    throw new Error("Missing textStyleId parameter");
+  }
+
+  try {
+    // Set up a manual timeout to detect long operations
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error("Timeout while setting text style ID (20s). The operation took too long to complete."));
+      }, 20000); // 20 seconds timeout
+    });
+
+    console.log(`Starting to set text style ID ${textStyleId} on node ${nodeId}...`);
+
+    // Get node and validate in a promise
+    const nodePromise = (async () => {
+      const node = await figma.getNodeByIdAsync(nodeId);
+      if (!node) {
+        throw new Error(`Node not found with ID: ${nodeId}`);
+      }
+
+      if (node.type !== "TEXT") {
+        throw new Error(`Node with ID ${nodeId} is not a TEXT node. Text styles can only be applied to text nodes.`);
+      }
+
+      if (!("textStyleId" in node)) {
+        throw new Error(`Node with ID ${nodeId} does not support text styles`);
+      }
+
+      // Try to validate the text style exists before applying
+      console.log(`Fetching text styles to validate style ID: ${textStyleId}`);
+      const textStyles = await figma.getLocalTextStylesAsync();
+      const foundStyle = textStyles.find(style => style.id === textStyleId);
+
+      if (!foundStyle) {
+        throw new Error(`Text style not found with ID: ${textStyleId}. Available styles: ${textStyles.length}`);
+      }
+
+      console.log(`Text style found, applying to node...`);
+
+      // Apply the text style to the node
+      node.textStyleId = textStyleId;
+
+      return {
+        id: node.id,
+        name: node.name,
+        textStyleId: node.textStyleId,
+        content: node.characters
+      };
+    })();
+
+    // Race between the node operation and the timeout
+    const result = await Promise.race([nodePromise, timeoutPromise])
+      .finally(() => {
+        // Clear the timeout to prevent memory leaks
+        clearTimeout(timeoutId);
+      });
+
+    console.log(`Successfully set text style ID on node ${nodeId}`);
+    return result;
+  } catch (error) {
+    console.error(`Error setting text style ID: ${error.message || "Unknown error"}`);
+
+    // Provide more specific error messages
+    if (error.message.includes("not found") && error.message.includes("Node")) {
+      throw new Error(`Node with ID "${nodeId}" not found. Make sure the node exists in the current document.`);
+    } else if (error.message.includes("not found") && error.message.includes("style")) {
+      throw new Error(`Text style with ID "${textStyleId}" not found. Make sure the style exists in your local styles.`);
+    } else if (error.message.includes("is not a TEXT node")) {
+      throw new Error(`Cannot apply text style: node is not a TEXT node. Only text nodes can have text styles applied.`);
+    } else if (error.message.includes("does not support")) {
+      throw new Error(`The selected node does not support text styles.`);
+    } else {
+      throw new Error(`Error setting text style ID: ${error.message}`);
     }
   }
 }

@@ -406,6 +406,44 @@ export function registerModificationTools(server: McpServer): void {
     }
   );
 
+  // Set Text Style ID Tool
+  server.tool(
+    "set_text_style_id",
+    "Apply a text style to a text node in Figma",
+    {
+      nodeId: z.string().describe("The ID of the text node to modify"),
+      textStyleId: z.string().describe("The ID of the text style to apply")
+    },
+    async ({ nodeId, textStyleId }) => {
+      try {
+        const result = await sendCommandToFigma("set_text_style_id", {
+          nodeId,
+          textStyleId
+        });
+
+        const typedResult = result as { name: string, textStyleId: string };
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Successfully applied text style to node "${typedResult.name}"`
+            }
+          ]
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error setting text style: ${error instanceof Error ? error.message : String(error)}`
+            }
+          ]
+        };
+      }
+    }
+  );
+
   // Rename Node Tool
   server.tool(
     "rename_node",
