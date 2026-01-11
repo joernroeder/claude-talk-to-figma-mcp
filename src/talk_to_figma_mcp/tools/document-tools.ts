@@ -191,6 +191,40 @@ export function registerDocumentTools(server: McpServer): void {
     }
   );
 
+  // Get Local Variables Tool
+  server.tool(
+    "get_local_variables",
+    "Get all local variables from the Figma document, including colors, spacing, typography, and other design tokens",
+    {
+      type: z
+        .enum(["COLOR", "FLOAT", "STRING", "BOOLEAN"])
+        .optional()
+        .describe("Optional filter by variable type (COLOR, FLOAT, STRING, or BOOLEAN)")
+    },
+    async ({ type }) => {
+      try {
+        const result = await sendCommandToFigma("get_local_variables", { type });
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result)
+            }
+          ]
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error getting local variables: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
   // Get Remote Components Tool
   server.tool(
     "get_remote_components",

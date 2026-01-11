@@ -142,6 +142,8 @@ async function handleCommand(command, params) {
       return await getStyles();
     case "get_local_components":
       return await getLocalComponents();
+    case "get_local_variables":
+      return await getLocalVariables(params);
     // case "get_team_components":
     //   return await getTeamComponents();
     case "create_component_instance":
@@ -807,6 +809,37 @@ async function getLocalComponents() {
       id: component.id,
       name: component.name,
       key: "key" in component ? component.key : null,
+    })),
+  };
+}
+
+async function getLocalVariables(params = {}) {
+  const { type } = params; // Optional filter: 'COLOR', 'FLOAT', 'STRING', 'BOOLEAN'
+
+  // Get collections
+  const collections = await figma.variables.getLocalVariableCollectionsAsync();
+
+  // Get variables (with optional type filter)
+  const variables = type
+    ? await figma.variables.getLocalVariablesAsync(type)
+    : await figma.variables.getLocalVariablesAsync();
+
+  return {
+    collections: collections.map(c => ({
+      id: c.id,
+      name: c.name,
+      key: c.key,
+      modes: c.modes,
+      defaultModeId: c.defaultModeId,
+      variableIds: c.variableIds,
+    })),
+    variables: variables.map(v => ({
+      id: v.id,
+      name: v.name,
+      key: v.key,
+      resolvedType: v.resolvedType,
+      valuesByMode: v.valuesByMode,
+      collectionId: v.variableCollectionId,
     })),
   };
 }
