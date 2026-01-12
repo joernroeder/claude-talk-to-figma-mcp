@@ -227,6 +227,8 @@ async function handleCommand(command, params) {
       return await setCurrentPage(params);
     case "save_version":
       return await saveVersion(params);
+    case "set_variable_binding":
+      return await setVariableBinding(params);
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -3849,6 +3851,93 @@ async function saveVersion(params) {
     if (error.message && error.message.includes("permission")) {
       throw new Error("You don't have permission to save versions. Only editors can save to version history.");
     }
+    throw error;
+  }
+}
+
+async function setVariableBinding(params) {
+  const { nodeId, property, variableId } = params || {};
+
+  if (!nodeId) {
+    throw new Error("Missing nodeId parameter");
+  }
+
+  if (!property) {
+    throw new Error("Missing property parameter");
+  }
+
+  if (!variableId) {
+    throw new Error("Missing variableId parameter");
+  }
+
+  try {
+    console.log(`Binding variable ${variableId} to property "${property}" on node ${nodeId}...`);
+
+    // Get the node
+    const node = await figma.getNodeByIdAsync(nodeId);
+    if (!node) {
+      throw new Error(`Node not found with ID: ${nodeId}`);
+    }
+
+    // Get the variable by ID
+    const variable = await figma.variables.getVariableByIdAsync(variableId);
+    if (!variable) {
+      throw new Error(`Variable not found with ID: ${variableId}`);
+    }
+
+    // Map property names to Figma field names
+    // Figma uses specific field enums for variable bindings
+    let field;
+
+    // Auto layout spacing properties
+    if (property === "paddingTop") {
+      field = "topPadding";
+    } else if (property === "paddingBottom") {
+      field = "bottomPadding";
+    } else if (property === "paddingLeft") {
+      field = "leftPadding";
+    } else if (property === "paddingRight") {
+      field = "rightPadding";
+    } else if (property === "itemSpacing") {
+      field = "itemSpacing";
+    } else if (property === "opacity") {
+      field = "opacity";
+    } else if (property === "rotation") {
+      field = "rotation";
+    } else if (property === "fills") {
+      field = "fills";
+    } else if (property === "strokes") {
+      field = "strokes";
+    } else if (property === "strokeWeight") {
+      field = "strokeWeight";
+    } else if (property === "width") {
+      field = "width";
+    } else if (property === "height") {
+      field = "height";
+    } else {
+      // Try using the property as-is if it's not a known mapping
+      field = property;
+    }
+
+    console.log(`Using field: ${field} for property: ${property}`);
+
+    // Bind the variable to the node property
+    // setBoundVariable expects (field, variable)
+    node.setBoundVariable(field, variable);
+
+    console.log(`Successfully bound variable to ${field}`);
+
+    return {
+      nodeId,
+      property,
+      variableId,
+      field,
+      nodeName: node.name,
+      message: `Bound variable ${variableId} to ${field}`
+    };
+
+  } catch (error) {
+    console.error(`Error in setVariableBinding: ${error.message}`);
     throw error;
   }
 }

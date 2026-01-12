@@ -479,4 +479,46 @@ export function registerModificationTools(server: McpServer): void {
       }
     }
   );
+
+  // Set Variable Binding Tool
+  server.tool(
+    "set_variable_binding",
+    "Bind a Figma variable to a node property (e.g., padding, gap, fill color). The variable type must match the property type.",
+    {
+      nodeId: z.string().describe("The ID of the node to modify"),
+      property: z.string().describe(
+        "The property to bind the variable to. Examples: paddingTop, paddingBottom, paddingLeft, paddingRight, itemSpacing, fills, strokes, rotation, opacity"
+      ),
+      variableId: z.string().describe(
+        "The ID of the variable to bind (from get_local_variables). Format: VariableID:xyz or variable key"
+      ),
+    },
+    async ({ nodeId, property, variableId }) => {
+      try {
+        const result = await sendCommandToFigma("set_variable_binding", {
+          nodeId,
+          property,
+          variableId,
+        });
+        const typedResult = result as { nodeId: string; property: string; variableId: string; nodeName: string };
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Successfully bound variable ${variableId} to property "${property}" on node "${typedResult.nodeName}"`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error binding variable: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+        };
+      }
+    }
+  );
 }
