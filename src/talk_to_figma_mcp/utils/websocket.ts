@@ -106,8 +106,7 @@ export function connectToFigma(port: number = defaultPort) {
         // Handle response to a request
         if (
           myResponse.id &&
-          pendingRequests.has(myResponse.id) &&
-          myResponse.result
+          pendingRequests.has(myResponse.id)
         ) {
           const request = pendingRequests.get(myResponse.id)!;
           clearTimeout(request.timeout);
