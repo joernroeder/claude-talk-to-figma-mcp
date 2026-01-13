@@ -483,14 +483,14 @@ export function registerModificationTools(server: McpServer): void {
   // Set Variable Binding Tool
   server.tool(
     "set_variable_binding",
-    "Bind a Figma variable to a node property (e.g., padding, gap, fill color). The variable type must match the property type.",
+    "Bind a Figma variable to a node property (e.g., padding, gap, fill color). Supports both local variables (by ID) and library variables (by key). The variable type must match the property type.",
     {
       nodeId: z.string().describe("The ID of the node to modify"),
       property: z.string().describe(
         "The property to bind the variable to. Examples: paddingTop, paddingBottom, paddingLeft, paddingRight, itemSpacing, fills, strokes, rotation, opacity"
       ),
       variableId: z.string().describe(
-        "The ID of the variable to bind (from get_local_variables). Format: VariableID:xyz or variable key"
+        "The ID or key of the variable to bind. For local variables: use VariableID:xyz from get_local_variables. For library variables: use the variable key (e.g., 'abc123xyz') from the library's get_local_variables."
       ),
     },
     async ({ nodeId, property, variableId }) => {
