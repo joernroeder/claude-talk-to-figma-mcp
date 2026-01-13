@@ -3935,8 +3935,49 @@ async function setVariableBinding(params) {
 
     console.log(`Using field: ${field} for property: ${property}`);
 
-    // Bind the variable to the node property
-    // setBoundVariable expects (field, variable)
+    // Special handling for fills and strokes - they must be bound at the paint level
+    if (field === "fills" || field === "strokes") {
+      const paints = field === "fills" ? node.fills : node.strokes;
+
+      if (!Array.isArray(paints) || paints.length === 0) {
+        throw new Error(`Node has no ${field} to bind variable to`);
+      }
+
+      // Clone the paints array and bind variable to the first solid paint
+      const newPaints = [...paints];
+      const solidPaintIndex = newPaints.findIndex(paint => paint.type === "SOLID");
+
+      if (solidPaintIndex === -1) {
+        throw new Error(`No SOLID paint found in ${field} to bind variable to`);
+      }
+
+      // Create a new paint with the variable bound
+      newPaints[solidPaintIndex] = figma.variables.setBoundVariableForPaint(
+        newPaints[solidPaintIndex],
+        "color",
+        variable
+      );
+
+      // Set the updated paints back to the node
+      if (field === "fills") {
+        node.fills = newPaints;
+      } else {
+        node.strokes = newPaints;
+      }
+
+      console.log(`Successfully bound variable to ${field} paint`);
+
+      return {
+        nodeId,
+        property,
+        variableId,
+        field,
+        nodeName: node.name,
+        message: `Bound variable ${variableId} to ${field} paint`
+      };
+    }
+
+    // For all other properties, bind directly to the node
     node.setBoundVariable(field, variable);
 
     console.log(`Successfully bound variable to ${field}`);
