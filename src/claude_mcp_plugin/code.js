@@ -3879,10 +3879,24 @@ async function setVariableBinding(params) {
       throw new Error(`Node not found with ID: ${nodeId}`);
     }
 
-    // Get the variable by ID
-    const variable = await figma.variables.getVariableByIdAsync(variableId);
+    // Get the variable - try local first, then import from library
+    let variable = null;
+
+    // First try to get as a local variable by ID
+    variable = await figma.variables.getVariableByIdAsync(variableId);
+
+    // If not found and looks like a variable key (not a VariableID format), try importing from library
     if (!variable) {
-      throw new Error(`Variable not found with ID: ${variableId}`);
+      console.log(`Variable not found locally, trying to import from library with key: ${variableId}`);
+      try {
+        variable = await figma.variables.importVariableByKeyAsync(variableId);
+      } catch (importError) {
+        console.log(`Failed to import variable by key: ${importError.message}`);
+      }
+    }
+
+    if (!variable) {
+      throw new Error(`Variable not found with ID or key: ${variableId}. For library variables, use the variable key from get_local_variables in the library file.`);
     }
 
     // Map property names to Figma field names
